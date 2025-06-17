@@ -15,13 +15,14 @@ dataset = BaseDataset(args)
 
 dataset.read_data(args)
 
-exit()
-
 torch_iekf.load(args, dataset)
 numpy_iekf.set_learned_covariance(torch_iekf)
 
 for i in range(0, len(dataset.datasets)):
     dataset_name = dataset.dataset_name(i)
+    if "0071" not in dataset_name:
+        continue
+
     print("Test filter on sequence: " + dataset_name)
 
     t, ang_gt, p_gt, v_gt, u = prepare_data(args, dataset, dataset_name, i, to_numpy=True)

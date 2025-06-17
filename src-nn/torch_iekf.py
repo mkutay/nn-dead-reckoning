@@ -348,7 +348,7 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
     @staticmethod
     def from_rpy(roll, pitch, yaw):
         """Form a rotation matrix from RPY Euler angles."""
-        return rotz(yaw).mm(roty(pitch).mm(rotx(roll)))
+        return TORCHIEKF.rotz(yaw).mm(TORCHIEKF.roty(pitch).mm(TORCHIEKF.rotx(roll)))
 
     @staticmethod
     def normalize_rot(rot):
@@ -408,6 +408,27 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
         else:
             cprint("IEKF nets NOT loaded", 'yellow')
         self.get_normalize_u(dataset)
+
+    @staticmethod
+    def rotx(t):
+        """Rotation about the x-axis."""
+        c = torch.cos(t)
+        s = torch.sin(t)
+        return t.new([[1,  0,  0], [0,  c, -s], [0,  s,  c]])
+
+    @staticmethod
+    def roty(t):
+        """Rotation about the y-axis."""
+        c = torch.cos(t)
+        s = torch.sin(t)
+        return t.new([[c,  0,  s], [0,  1,  0], [-s, 0,  c]])
+
+    @staticmethod
+    def rotz(t):
+        """Rotation about the z-axis."""
+        c = torch.cos(t)
+        s = torch.sin(t)
+        return t.new([[c, -s,  0], [s,  c,  0], [0,  0,  1]])
 
 def isclose(mat1, mat2, tol=1e-10):
     return (mat1 - mat2).abs().lt(tol)

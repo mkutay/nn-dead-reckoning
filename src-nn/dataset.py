@@ -353,7 +353,7 @@ class BaseDataset(Dataset):
         for filename in oxts_files:
             with open(filename, 'r') as f:
                 lines = f.readlines()
-                line = lines[0].strip() # there should only be one line per file
+                line = lines[0].strip().split() # there should only be one line per file
 
                 # Last five entries are flags and counts
                 line[:-5] = [float(x) for x in line[:-5]]
