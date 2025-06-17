@@ -87,6 +87,6 @@ class Args:
     path_temp="./ai-temp"
     path_results = "./ai-results"
     path_data_save="./ai-data"
-    path_data_base="./ai-data-base"
+    path_data_base="./great-dataset"
 
     parameter_class = KITTIParameters

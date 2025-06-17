@@ -1,9 +1,11 @@
 import numpy as np
 import torch
 import time
+
 from torch_iekf import TORCHIEKF # type: ignore
 from numpy_iekf import NUMPYIEKF # type: ignore
-from dataset import BaseDataset # type: ignore
+from kitti_dataset import KITTIDataset # type: ignore
+from great_dataset import GreatDataset # type: ignore
 from utils import prepare_data
 from args import Args
 from plot import IEKF_plot # type: ignore
@@ -11,16 +13,17 @@ from plot import IEKF_plot # type: ignore
 args = Args()
 numpy_iekf = NUMPYIEKF(args.parameter_class)
 torch_iekf = TORCHIEKF(args.parameter_class)
-dataset = BaseDataset(args)
+dataset = GreatDataset(args)
 
-dataset.read_data(args)
+# dataset.read_data(args)
+# exit()
 
 torch_iekf.load(args, dataset)
 numpy_iekf.set_learned_covariance(torch_iekf)
 
 for i in range(0, len(dataset.datasets)):
     dataset_name = dataset.dataset_name(i)
-    if "0071" not in dataset_name:
+    if "suburb" not in dataset_name and "urban" not in dataset_name:
         continue
 
     print("Test filter on sequence: " + dataset_name)
@@ -52,5 +55,7 @@ for i in range(0, len(dataset.datasets)):
     }
     
     dataset.dump(mondict, args.path_results, dataset_name + "_filter.p")
+
+    print()
 
 IEKF_plot(args, dataset)

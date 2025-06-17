@@ -1,3 +1,6 @@
-numpy>=1.21.0
-matplotlib>=3.5.0
+numpy
+matplotlib
 pyproj
+scipy
+navpy
+torch
