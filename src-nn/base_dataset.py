@@ -170,30 +170,3 @@ class BaseDataset(Dataset):
         t_c_i = mondict['t_c_i']
         measurements_covs = mondict['measurements_covs']
         return Rot, v, p , b_omega, b_acc, Rot_c_i, t_c_i, measurements_covs
-
-    @staticmethod
-    def pose_from_oxts_packet(packet, scale):
-        """Helper method to compute a SE(3) pose matrix from an OXTS packet."""
-        earth_radius = 6378137. # earth radius (approx.) in meters
-
-        # Use a Mercator projection to get the *translation vector*
-        tx = scale * packet.lon * np.pi * earth_radius / 180.
-        ty = scale * earth_radius * np.log(np.tan((90. + packet.lat) * np.pi / 360.))
-        tz = packet.alt
-        t = np.array([tx, ty, tz])
-
-        # Use the Euler angles to get the *rotation matrix*
-        Rx = rotx(packet.roll)
-        Ry = roty(packet.pitch)
-        Rz = rotz(packet.yaw)
-        R = Rz.dot(Ry.dot(Rx))
-
-        # Combine the translation and rotation into a homogeneous transform
-        return R, t
-
-    @staticmethod
-    def transform_from_rot_trans(R, t):
-        """Transformation matrix from rotation matrix and translation vector."""
-        R = R.reshape(3, 3)
-        t = t.reshape(3, 1)
-        return np.vstack((np.hstack([R, t]), [0, 0, 0, 1]))

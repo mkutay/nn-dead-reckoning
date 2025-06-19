@@ -1,0 +1,1 @@
+Due to surveying laws and regulations,we only provide raw GNSS observation data and ephemeris files for four sequences in the campus environment.The GNSS observation data for the other four sequences cannot be published on the internet. If you need them for academic research, please contact us via email to obtain access.

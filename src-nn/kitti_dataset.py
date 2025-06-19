@@ -3,10 +3,8 @@
 from collections import namedtuple, OrderedDict
 from torch.utils.data.dataset import Dataset
 from termcolor import cprint
-from navpy import lla2ned
 import numpy as np
 import datetime
-import pickle
 import torch
 import glob
 import os
@@ -115,9 +113,6 @@ class KITTIDataset(BaseDataset):
             ang_gt[:, 1] = pitch_gt
             ang_gt[:, 2] = yaw_gt
 
-            p_oxts = lla2ned(lat_oxts, lon_oxts, alt_oxts, lat_oxts[0], lon_oxts[0], alt_oxts[0], latlon_unit='deg', alt_unit='m', model='wgs84')
-            p_oxts[:, [0, 1]] = p_oxts[:, [1, 0]] # invert north and east axis, see note above
-
             # take correct imu measurements
             u = np.concatenate((gyro_bis, acc_bis), -1)
 
@@ -157,6 +152,33 @@ class KITTIDataset(BaseDataset):
         return timestamps
 
     @staticmethod
+    def pose_from_oxts_packet(packet, scale):
+        """Helper method to compute a SE(3) pose matrix from an OXTS packet."""
+        earth_radius = 6378137. # earth radius (approx.) in meters
+
+        # Use a Mercator projection to get the *translation vector*
+        tx = scale * packet.lon * np.pi * earth_radius / 180.
+        ty = scale * earth_radius * np.log(np.tan((90. + packet.lat) * np.pi / 360.))
+        tz = packet.alt
+        t = np.array([tx, ty, tz])
+    
+        # Use the Euler angles to get the *rotation matrix*
+        Rx = rotx(packet.roll)
+        Ry = roty(packet.pitch)
+        Rz = rotz(packet.yaw)
+        R = Rz.dot(Ry.dot(Rx))
+
+        # Combine the translation and rotation into a homogeneous transform
+        return R, t
+
+    @staticmethod
+    def transform_from_rot_trans(R, t):
+        """Transformation matrix from rotation matrix and translation vector."""
+        R = R.reshape(3, 3)
+        t = t.reshape(3, 1)
+        return np.vstack((np.hstack([R, t]), [0, 0, 0, 1]))
+
+    @staticmethod
     def load_oxts_packets_and_poses(oxts_files: list[str]) -> list[OxtsData]:
         """
         Generator to read OXTS ground truth data.
@@ -184,12 +206,12 @@ class KITTIDataset(BaseDataset):
                 if scale is None:
                     scale = np.cos(packet.lat * np.pi / 180.)
 
-                R, t = BaseDataset.pose_from_oxts_packet(packet, scale)
+                R, t = KITTIDataset.pose_from_oxts_packet(packet, scale)
 
                 if origin is None:
                     origin = t
 
-                T_w_imu = BaseDataset.transform_from_rot_trans(R, t - origin)
+                T_w_imu = KITTIDataset.transform_from_rot_trans(R, t - origin)
 
                 oxts.append(KITTIDataset.OxtsData(packet, T_w_imu))
 

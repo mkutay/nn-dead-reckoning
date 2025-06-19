@@ -10,7 +10,7 @@ from base_dataset import BaseDataset
 from utils import *
 
 class GreatDataset(BaseDataset):
-    IMU_QUALITY = "Tactical" # IMU quality, can be "MEMS" or "Tactical"
+    IMU_QUALITY = "MEMS" # IMU quality, can be "MEMS" or "Tactical"
 
     # Bundle into an easy-to-access structure
     GroundTruth = namedtuple('GroundTruth', ['weeks', 'gps_time', 'e', 'n', 'u', 'vx', 'vy', 'vz', 'heading', 'pitch', 'roll'])
@@ -21,132 +21,87 @@ class GreatDataset(BaseDataset):
 
     @staticmethod
     def read_data(args):
+        """
+        Read the data from the GREAT IMU dataset and save in the same format
+        as the KITTI read_data: t (s), u (6-vector), ang_gt, p_gt, v_gt, name,
+        t0.
+        """
         print("Start read_data for IMU dataset")
-
         data_dirs = os.listdir(args.path_data_base)
-        for n_iteration, data_dir in enumerate(data_dirs):
-            # get access to each sequence
+        for data_dir in data_dirs:
             path = os.path.join(args.path_data_base, data_dir)
             if not os.path.isdir(path):
                 continue
 
-            # Load ground truth
+            # Load ground truth and IMU
             path_gt = os.path.join(path, 'groundtruth.txt')
-            ground_truth_data = GreatDataset.load_ground_truth(path_gt)
+            gt_data = GreatDataset.load_ground_truth(path_gt)
             imu_data = GreatDataset.load_imu_data(path)
-
-            if not ground_truth_data or not imu_data:
+            if not gt_data or not imu_data:
                 cprint(f"Skipping {data_dir} due to missing data.", 'red')
                 continue
 
             print(f"\nProcessing sequence: {data_dir}")
-            
             dataset_name = data_dir
 
-            # Extract ground truth data
-            gps_time_gt = np.array([gt.gps_time for gt in ground_truth_data], dtype=np.float64)
-            e_gt = np.array([gt.e for gt in ground_truth_data], dtype=np.float64)
-            n_gt = np.array([gt.n for gt in ground_truth_data], dtype=np.float64)
-            u_gt = np.array([gt.u for gt in ground_truth_data], dtype=np.float64)
-            vx_gt = np.array([gt.vx for gt in ground_truth_data], dtype=np.float64)
-            vy_gt = np.array([gt.vy for gt in ground_truth_data], dtype=np.float64)
-            vz_gt = np.array([gt.vz for gt in ground_truth_data], dtype=np.float64)
-            heading_gt = np.array([gt.heading for gt in ground_truth_data], dtype=np.float64)
-            pitch_gt = np.array([gt.pitch for gt in ground_truth_data], dtype=np.float64)
-            roll_gt = np.array([gt.roll for gt in ground_truth_data], dtype=np.float64)
+            # Extract and align timestamps
+            gps_times = np.array([gt.gps_time for gt in gt_data], dtype=np.float64)
+            imu_times = np.array([imu.time for imu in imu_data], dtype=np.float64)
 
-            # Extract IMU data
-            time_imu = np.array([float(imu.time) for imu in imu_data], dtype=np.float64)
-            gyro_x = np.array([float(imu.gyro_x) for imu in imu_data], dtype=np.float64)
-            gyro_y = np.array([float(imu.gyro_y) for imu in imu_data], dtype=np.float64)
-            gyro_z = np.array([float(imu.gyro_z) for imu in imu_data], dtype=np.float64)
-            accel_x = np.array([float(imu.accel_x) for imu in imu_data], dtype=np.float64)
-            accel_y = np.array([float(imu.accel_y) for imu in imu_data], dtype=np.float64)
-            accel_z = np.array([float(imu.accel_z) for imu in imu_data], dtype=np.float64)
+            # Reference time
+            t0 = imu_times[0]
+            t = imu_times - t0
+            gps_times -= t0
 
-            t0 = time_imu[0]
-            time = time_imu - t0
-            
-            # Adjust ground truth time to same reference
-            gps_time_adjusted = gps_time_gt - t0
+            # Nearest-neighbor sync of GT (10Hz) to IMU (100Hz)
+            # For each imu timestamp find closest gt index
+            indices = np.argmin(np.abs(gps_times[None, :] - t[:, None]), axis=1)
 
-            # Synchronize ground truth to IMU timestamps using nearest neighbor interpolation
-            print(f"Synchronizing ground truth (10Hz) to IMU timestamps (100Hz)...")
-            
-            # Find closest ground truth for each IMU timestamp
-            closest_indices = []
-            for imu_time in time:
-                # Find the index of the closest ground truth timestamp
-                time_diffs = np.abs(gps_time_adjusted - imu_time)
-                closest_idx = np.argmin(time_diffs)
-                closest_indices.append(closest_idx)
-            
-            closest_indices = np.array(closest_indices)
-            
-            # Interpolate ground truth data to match IMU timestamps
-            e_interp = e_gt[closest_indices]
-            n_interp = n_gt[closest_indices]
-            u_interp = u_gt[closest_indices]
-            vx_interp = vx_gt[closest_indices]
-            vy_interp = vy_gt[closest_indices]
-            vz_interp = vz_gt[closest_indices]
-            heading_interp = heading_gt[closest_indices]
-            pitch_interp = pitch_gt[closest_indices]
-            roll_interp = roll_gt[closest_indices]
+            # Build synchronized arrays
+            gyro = np.vstack([[imu.gyro_x, imu.gyro_y, imu.gyro_z] for imu in imu_data])
+            accel = np.vstack([[imu.accel_x, imu.accel_y, imu.accel_z] for imu in imu_data])
+            u_arr = np.hstack((gyro, accel))
 
-            # Prepare IMU data matrix
-            gyro_bis = np.zeros((len(imu_data), 3))
-            acc_bis = np.zeros((len(imu_data), 3))
-            for k in range(len(imu_data)):
-                gyro_bis[k, 0] = gyro_x[k]
-                gyro_bis[k, 1] = gyro_y[k]
-                gyro_bis[k, 2] = gyro_z[k]
-                acc_bis[k, 0] = accel_x[k]
-                acc_bis[k, 1] = accel_y[k]
-                acc_bis[k, 2] = accel_z[k]
-            u_t = np.concatenate((gyro_bis, acc_bis), -1)
+            # Ground truth position (e, n, u) and subtract initial fix
+            e = np.array([gt.e for gt in gt_data], dtype=np.float64)
+            n = np.array([gt.n for gt in gt_data], dtype=np.float64)
+            u_ = np.array([gt.u for gt in gt_data], dtype=np.float64)
+            e_i = e[indices]
+            n_i = n[indices]
+            u_i = u_[indices]
+            p_arr = np.vstack((e_i, n_i, u_i)).T
+            p_arr -= p_arr[0] # now relative to first GPS point
 
-            # Prepare ground truth matrices (now synchronized to IMU timestamps)
-            v_gt = np.zeros((len(imu_data), 3))
-            for k in range(len(imu_data)):
-                v_gt[k, 0] = vx_interp[k]
-                v_gt[k, 1] = vy_interp[k]
-                v_gt[k, 2] = vz_interp[k]
+            # Ground truth velocity [vx, vy, vz]
+            vx = np.array([gt.vx for gt in gt_data], dtype=np.float64)
+            vy = np.array([gt.vy for gt in gt_data], dtype=np.float64)
+            # vy *= -1
+            vz = np.array([gt.vz for gt in gt_data], dtype=np.float64)
+            v_arr = np.vstack((vx[indices], vy[indices], vz[indices])).T
 
-            ang_gt = np.zeros((len(imu_data), 3))
-            for k in range(len(imu_data)):
-                ang_gt[k, 0] = roll_interp[k]
-                ang_gt[k, 1] = pitch_interp[k]
-                ang_gt[k, 2] = heading_interp[k]
+            # Ground truth angles: [roll, pitch, heading] in radians
+            roll = np.array([gt.roll for gt in gt_data], dtype=np.float64)
+            pitch = np.array([gt.pitch for gt in gt_data], dtype=np.float64)
+            head = np.array([gt.heading for gt in gt_data], dtype=np.float64)
+            # head = head - np.pi / 2 # adjust heading to match IMU frame from kitti
+            ang_arr = np.vstack((roll[indices], pitch[indices], head[indices])).T * np.pi / 180.0
 
-            p_gt = np.zeros((len(imu_data), 3))
-            for k in range(len(imu_data)):
-                p_gt[k, 0] = e_interp[k]
-                p_gt[k, 1] = n_interp[k]
-                p_gt[k, 2] = u_interp[k]
+            t = torch.from_numpy(t).float()
+            u_t = torch.from_numpy(u_arr).float()
+            p_gt = torch.from_numpy(p_arr).float()
+            v_gt = torch.from_numpy(v_arr).float()
+            ang_gt = torch.from_numpy(ang_arr).float()
 
-            print(f"IMU data length: {len(imu_data)}")
-            print(f"Ground truth data length (original): {len(ground_truth_data)}")
-            print(f"Ground truth data length (synchronized): {len(p_gt)}")
-
-            time = torch.from_numpy(time).float()
-            u_t = torch.from_numpy(u_t).float()
-            ang_gt = torch.from_numpy(ang_gt).float()
-            p_gt = torch.from_numpy(p_gt).float()
-            v_gt = torch.from_numpy(v_gt).float()
-
-            # Save to pickle
-            pickle_dict = {
-                't': time,
-                'u': u_t,
-                'ang_gt': ang_gt,
-                'p_gt': p_gt,
-                'v_gt': v_gt,
+            mondict = {
+                't': t, # [N] time from start (s)
+                'u': u_t, # [N * 6] imu inputs gyro+acc
+                'ang_gt': ang_gt, # [N * 3] roll,pitch,heading (rad)
+                'p_gt': p_gt, # [N * 3] easting,northing,up (m)
+                'v_gt': v_gt, # [N * 3] velocities (m/s)
                 'name': dataset_name,
-                't0': t0,
+                't0': t0, # original first IMU time
             }
-
-            BaseDataset.dump(pickle_dict, args.path_data_save, dataset_name)
+            BaseDataset.dump(mondict, args.path_data_save, dataset_name)
             print(f"Saved dataset: {dataset_name}")
 
     @staticmethod

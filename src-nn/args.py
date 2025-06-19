@@ -1,5 +1,7 @@
 import numpy as np
 
+from great_dataset import GreatDataset # type: ignore
+
 class Parameters:
     g = np.array([0, 0, -9.80665])
     """gravity vector"""
@@ -90,3 +92,9 @@ class Args:
     path_data_base="./great-dataset"
 
     parameter_class = KITTIParameters
+    dataset_class = GreatDataset
+
+    epochs = 400
+    seq_dim = 10000
+
+    continue_training = False
