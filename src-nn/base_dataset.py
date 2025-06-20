@@ -40,6 +40,12 @@ class BaseDataset(Dataset):
         self.datasets_train_filter = OrderedDict()
         """Validation dataset with index for starting/ending"""
 
+        # noise added to the data
+        self.sigma_gyro = 1.e-4
+        self.sigma_acc = 1.e-4
+        self.sigma_b_gyro = 1.e-5
+        self.sigma_b_acc = 1.e-4
+
         # number of training data points
         self.num_data = 0
 
@@ -170,3 +176,13 @@ class BaseDataset(Dataset):
         t_c_i = mondict['t_c_i']
         measurements_covs = mondict['measurements_covs']
         return Rot, v, p , b_omega, b_acc, Rot_c_i, t_c_i, measurements_covs
+    
+    def add_noise(self, u):
+        w = torch.randn_like(u[:, :6]) # noise
+        w_b = torch.randn_like(u[0, :6]) # bias
+        w[:, :3] *= self.sigma_gyro
+        w[:, 3:6] *= self.sigma_acc
+        w_b[:3] *= self.sigma_b_gyro
+        w_b[3:6] *= self.sigma_b_acc
+        u[:, :6] += w + w_b
+        return u

@@ -4,12 +4,11 @@ import sys
 
 from torch_iekf import TORCHIEKF # type: ignore
 from numpy_iekf import NUMPYIEKF # type: ignore
-from kitti_dataset import KITTIDataset # type: ignore
-from great_dataset import GreatDataset # type: ignore
 from utils import prepare_data
 from args import Args
 from plot import IEKF_plot # type: ignore
-from train_torch import train_filter # type: ignore
+from train_torch import train_filter as train_filter_cpu # type: ignore
+from train_torch_gpu import train_filter as train_filter_gpu # type: ignore
 
 args = Args()
 numpy_iekf = NUMPYIEKF(args.parameter_class)
@@ -19,15 +18,17 @@ dataset = args.dataset_class(args)
 do = sys.argv[1]
 if do == "read":
     dataset.read_data(args)
-elif do == "train":
-    train_filter(args, dataset)
+elif do == "train-gpu":
+    train_filter_gpu(args, dataset)
+elif do == "train-cpu":
+    train_filter_cpu(args, dataset)
 elif do == "filter":
     torch_iekf.load(args, dataset)
     numpy_iekf.set_learned_covariance(torch_iekf)
 
     for i in range(0, len(dataset.datasets)):
         dataset_name = dataset.dataset_name(i)
-        if "suburb" not in dataset_name:
+        if "sunny" not in dataset_name:
             continue
 
         print("Test filter on sequence: " + dataset_name)

@@ -10,19 +10,23 @@ import os
 from torch_iekf import TORCHIEKF
 from utils import prepare_data
 
-max_loss = 2e1
-max_grad_norm = 1e0
-min_lr = 1e-5
+# Training constants optimized for MidAir drone dataset
+max_loss = 1e6          # Even higher max loss threshold for initial training convergence  
+max_grad_norm = 1e-1    # Much more aggressive gradient clipping for stability
+min_lr = 1e-8           # Much lower minimum learning rate for fine-tuning
 criterion = torch.nn.MSELoss(reduction="sum")
-lr_initprocesscov_net = 1e-4
-weight_decay_initprocesscov_net = 0e-8
+
+# Learning rates optimized for drone IMU characteristics - much more conservative for stability
+lr_initprocesscov_net = 1e-7    # Much more conservative initial process covariance learning rate
+weight_decay_initprocesscov_net = 1e-6  # Higher weight decay for stronger regularization
+
 lr_mesnet = {
-    'cov_net': 1e-4,
-    'cov_lin': 1e-4,
+    'cov_net': 1e-7,    # Much more conservative learning rate for measurement covariance network
+    'cov_lin': 1e-6,    # Much more conservative linear layer learning rate for stability
 }
 weight_decay_mesnet = {
-    'cov_net': 1e-8,
-    'cov_lin': 1e-8,
+    'cov_net': 1e-5,    # Much higher weight decay for covariance network regularization
+    'cov_lin': 1e-6,    # Higher weight decay for linear layers
 }
 
 def compute_delta_p(Rot, p):

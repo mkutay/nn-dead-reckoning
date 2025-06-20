@@ -1,0 +1,10 @@
+https://midair.ulg.ac.be/MidAir/Kite_training/sunny/sensor_records.zip?id=5e920542dc4418822556f720c9e014c6025b48d0eb651a0e
+https://midair.ulg.ac.be/MidAir/Kite_training/sunset/sensor_records.zip?id=5e920542dc4418822556f720c9e014c6025b48d0eb651a0e
+https://midair.ulg.ac.be/MidAir/Kite_training/foggy/sensor_records.zip?id=5e920542dc4418822556f720c9e014c6025b48d0eb651a0e
+https://midair.ulg.ac.be/MidAir/Kite_training/cloudy/sensor_records.zip?id=5e920542dc4418822556f720c9e014c6025b48d0eb651a0e
+https://midair.ulg.ac.be/MidAir/PLE_training/fall/sensor_records.zip?id=5e920542dc4418822556f720c9e014c6025b48d0eb651a0e
+https://midair.ulg.ac.be/MidAir/PLE_training/spring/sensor_records.zip?id=5e920542dc4418822556f720c9e014c6025b48d0eb651a0e
+https://midair.ulg.ac.be/MidAir/PLE_training/winter/sensor_records.zip?id=5e920542dc4418822556f720c9e014c6025b48d0eb651a0e
+https://midair.ulg.ac.be/MidAir/VO_test/foggy/sensor_records.zip?id=5e920542dc4418822556f720c9e014c6025b48d0eb651a0e
+https://midair.ulg.ac.be/MidAir/VO_test/sunny/sensor_records.zip?id=5e920542dc4418822556f720c9e014c6025b48d0eb651a0e
+https://midair.ulg.ac.be/MidAir/VO_test/sunset/sensor_records.zip?id=5e920542dc4418822556f720c9e014c6025b48d0eb651a0e

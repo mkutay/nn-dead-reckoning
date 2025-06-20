@@ -114,3 +114,22 @@ def to_rpy(Rot):
         roll = np.arctan2(Rot[2, 1] * sec_pitch, Rot[2, 2] * sec_pitch)
     
     return roll, pitch, yaw
+
+def quat_to_rotation_matrix(quat):
+    """
+    Convert quaternion [w, x, y, z] to rotation matrix.
+    """
+    w, x, y, z = quat[0], quat[1], quat[2], quat[3]
+    
+    # Normalize quaternion
+    norm = np.sqrt(w*w + x*x + y*y + z*z)
+    w, x, y, z = w/norm, x/norm, y/norm, z/norm
+    
+    # Convert to rotation matrix
+    R = np.array([
+        [1 - 2*(y*y + z*z), 2*(x*y - w*z), 2*(x*z + w*y)],
+        [2*(x*y + w*z), 1 - 2*(x*x + z*z), 2*(y*z - w*x)],
+        [2*(x*z - w*y), 2*(y*z + w*x), 1 - 2*(x*x + y*y)]
+    ])
+    
+    return R
